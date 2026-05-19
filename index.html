@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PF1e 法术查询器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f4f5f7;--surface:#ffffff;--surface2:#f8f9fb;
+  --accent:#5b6abf;--accent-light:#eef0f9;--accent-hover:#4a59ad;
+  --text:#1e2132;--text2:#6b7280;--text3:#9ca3af;
+  --border:#e5e7eb;--border2:#d1d5db;--hover:#f3f4f6;
+  --tag-bg:#eef0f9;--tag-text:#5b6abf;
+  --school-bg:#fef3e2;--school-text:#c27803;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.05);
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 6px -1px rgba(0,0,0,.08),0 2px 4px -2px rgba(0,0,0,.04);
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.header{background:var(--surface);padding:16px 32px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:var(--shadow-sm)}
+.header-inner{max-width:1600px;margin:0 auto}
+.header h1{font-size:1.25rem;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;color:var(--text)}
+.header h1 .accent{color:var(--accent)}
+.header h1 .sep{color:var(--text3);font-weight:400;font-size:.9rem}
+.search-wrap{position:relative}
+.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.search-box{width:100%;padding:9px 16px 9px 38px;font-size:.9rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s}
+.search-box:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,106,191,.12)}
+.search-box::placeholder{color:var(--text3)}
+
+.layout{display:flex;max-width:1600px;margin:0 auto;min-height:calc(100vh - 90px)}
+.sidebar{width:264px;min-width:264px;background:var(--surface);border-right:1px solid var(--border);padding:16px;overflow-y:auto;max-height:calc(100vh - 90px);position:sticky;top:90px}
+.sidebar h3{font-size:.7rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:1.2px;margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.sidebar h3:first-child{margin-top:0}
+.filter-list{display:flex;flex-direction:column;gap:1px;max-height:220px;overflow-y:auto}
+.filter-list.school-list{max-height:180px}
+.filter-item{display:flex;align-items:center;gap:7px;padding:3px 8px;border-radius:4px;cursor:pointer;transition:background .12s;font-size:.82rem;color:var(--text)}
+.filter-item:hover{background:var(--hover)}
+.filter-item input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;flex-shrink:0;border-radius:3px}
+.level-filters{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.level-btn{padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:.8rem;transition:all .12s;font-weight:500}
+.level-btn:hover{border-color:var(--accent);color:var(--accent)}
+.level-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-row{display:flex;gap:4px;margin-top:6px}
+.btn-row button{flex:1;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:.72rem;transition:all .12s;font-weight:500}
+.btn-row button:hover{background:var(--hover);color:var(--text);border-color:var(--border2)}
+
+.main{flex:1;padding:20px 28px;min-width:0}
+.stats{color:var(--text2);font-size:.85rem;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.stats .num{color:var(--accent);font-weight:700}
+
+.level-group{margin-bottom:16px}
+.level-group-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 16px;margin-bottom:6px;position:sticky;top:90px;z-index:50;box-shadow:var(--shadow-sm)}
+.level-group-header h2{font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.level-group-header .lv-num{background:var(--accent);color:#fff;padding:1px 10px;border-radius:20px;font-size:.78rem;font-weight:600}
+.level-group-header .lv-count{color:var(--text3);font-weight:400;font-size:.8rem}
+.level-group-header .lv-label{font-size:.78rem;color:var(--text3);font-weight:400}
+
+.spell-list{display:flex;flex-direction:column;gap:4px}
+.spell-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:box-shadow .15s,border-color .15s}
+.spell-card:hover{box-shadow:var(--shadow);border-color:var(--border2)}
+.spell-card.expanded{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow-md)}
+.spell-header{padding:8px 14px;cursor:pointer;transition:background .12s}
+.spell-header:hover{background:var(--surface2)}
+.spell-top{display:flex;align-items:baseline;gap:6px}
+.spell-name{font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.spell-name .en{color:var(--text3);font-weight:400;font-size:.78rem;margin-left:4px}
+.spell-types{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px}
+.tag{padding:1px 7px;border-radius:3px;font-size:.7rem;white-space:nowrap;font-weight:500}
+.tag.type{background:var(--tag-bg);color:var(--tag-text)}
+.tag.school{background:var(--school-bg);color:var(--school-text)}
+
+.spell-detail{display:none;padding:0 14px 14px;border-top:1px solid var(--border);background:var(--surface2)}
+.spell-card.expanded .spell-detail{display:block}
+.spell-detail .desc{margin-top:10px;font-size:.85rem;color:var(--text);line-height:1.75}
+.spell-detail .desc p{margin-bottom:6px}
+.spell-detail .desc br+br{display:none}
+.spell-detail .desc b{color:var(--accent)}
+.spell-detail .desc a{color:var(--accent);text-decoration:underline}
+.spell-detail .desc table{border-collapse:collapse;width:100%;margin:6px 0;font-size:.82rem}
+.spell-detail .desc td,.spell-detail .desc th{border:1px solid var(--border);padding:3px 8px;text-align:left}
+.spell-detail .desc th{background:var(--surface)}
+.detail-section{margin-top:10px}
+.detail-section .label{font-size:.72rem;color:var(--text2);margin-bottom:3px;font-weight:600;letter-spacing:.3px}
+.class-levels{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.class-level-tag{padding:1px 7px;border-radius:3px;font-size:.72rem;background:var(--tag-bg);color:var(--tag-text);font-weight:500}
+.action-block{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-top:6px}
+.action-block-title{font-weight:600;font-size:.82rem;margin-bottom:4px;color:var(--text)}
+.action-row{display:flex;gap:6px;flex-wrap:wrap;font-size:.82rem;margin-top:3px}
+.action-row .key{color:var(--text2);min-width:64px;font-weight:500}
+.action-row .val{color:var(--text)}
+
+.loading{text-align:center;padding:60px;color:var(--text2);font-size:1rem}
+.pagination{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:16px;padding:12px 0}
+.pagination button{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;transition:all .12s;font-size:.82rem;font-weight:500}
+.pagination button:hover:not(:disabled){background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+.pagination button:disabled{opacity:.35;cursor:not-allowed}
+.pagination .page-info{color:var(--text2);font-size:.85rem}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty-state .icon{font-size:2.5rem;margin-bottom:8px}
+
+.show-more-btn{display:block;width:100%;padding:8px;margin-top:4px;border:1px dashed var(--border2);border-radius:var(--radius);background:var(--surface);color:var(--accent);cursor:pointer;font-size:.82rem;font-weight:500;transition:all .15s}
+.show-more-btn:hover{background:var(--accent-light);border-color:var(--accent)}
+.original-text-btn{display:inline-block;padding:4px 10px;margin-top:10px;border:1px solid var(--border2);border-radius:12px;background:var(--surface);color:var(--text2);cursor:pointer;font-size:.72rem;font-weight:500;text-align:center;transition:all .2s;align-self:flex-start}
+.original-text-btn:hover{background:var(--accent-light);border-color:var(--accent);color:var(--accent)}
+.original-text-content{display:none;margin-top:8px;padding:12px;background:#fafbff;border-left:3px solid var(--accent);border-radius:0 6px 6px 0;font-size:.82rem;line-height:1.6;color:var(--text)}
+.original-text-content.show{display:block}
+.original-text-content .action-block{border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:12px;background:var(--surface)}
+.original-text-content .action-block-title{font-weight:600;font-size:.9rem;margin-bottom:6px;color:var(--text)}
+.original-text-content .action-row .key{min-width:100px;font-weight:500;color:var(--text2)}
+.original-text-link{color:var(--accent);text-decoration:none;font-weight:500;display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:.8rem}
+.original-text-link:hover{color:var(--accent-hover);text-decoration:underline}
+
+@media(max-width:768px){
+  .layout{flex-direction:column}
+  .sidebar{width:100%;min-width:unset;max-height:none;position:static;top:auto;border-right:none;border-bottom:1px solid var(--border)}
+  .main{padding:12px}
+  .level-group-header{position:static;top:auto}
+  .filter-list{max-height:120px}
+}
+</style>
+</head>
+<body>
+<div class="header">
+<div class="header-inner">
+<h1><span class="accent">PF1e</span> <span class="sep">/</span> 法术查询器</h1>
+<div class="search-wrap">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+<input type="text" class="search-box" id="search" placeholder="搜索法术名称（支持中英文）..." autocomplete="off">
+</div>
+</div>
+</div>
+<div class="layout">
+<div class="sidebar">
+<h3>职业筛选</h3>
+<div class="btn-row">
+<button onclick="toggleFilter('class','all')">全选</button>
+<button onclick="toggleFilter('class','none')">清空</button>
+</div>
+<div class="filter-list" id="classList"></div>
+
+<h3>学派筛选</h3>
+<div class="btn-row">
+<button onclick="toggleFilter('school','all')">全选</button>
+<button onclick="toggleFilter('school','none')">清空</button>
+</div>
+<div class="filter-list" id="schoolList"></div>
+
+<h3>等级筛选</h3>
+<div class="level-filters" id="levelFilters"></div>
+<div class="btn-row">
+<button onclick="toggleFilter('level','all')">全选</button>
+<button onclick="toggleFilter('level','none')">清空</button>
+</div>
+</div>
+<div class="main">
+<div class="stats" id="stats"></div>
+<div id="spellList"></div>
+<div class="pagination" id="pagination"></div>
+</div>
+</div>
+<script>
+const CLASS_MAP = {
+  adept:'导师',alchemist:'炼金术士',antipaladin:'反圣武士',arcanist:'奥术师',
+  bard:'吟游诗人',bloodrager:'血脉狂怒者',brawler:'拳师',cleric:'牧师',
+  druid:'德鲁伊',fighter:'战士',gunslinger:'铳士',hunter:'猎人',
+  inquisitor:'审判者',investigator:'调查员',magus:'魔战士',medium:'通灵师',
+  mesmerist:'催眠师',monk:'武僧',ninja:'忍者',occultist:'秘学士',
+  oracle:'先知',paladin:'圣武士',psychic:'异能者',ranger:'游侠',
+  rogue:'盗贼',samurai:'武士',shaman:'萨满',skald:'歌者',
+  sorcerer:'术士',summoner:'召唤师',summonerUnchained:'召唤师（Unchained）',swashbuckler:'游荡剑客',witch:'女巫',
+  wizard:'法师',warpriest:'战斗祭司',kineticist:'操念使',spiritualist:'灵媒师',
+  champion:'勇士'
+};
+
+let allClasses = [], allSchools = [];
+let selectedClasses = new Set(), selectedSchools = new Set(), selectedLevels = new Set();
+let searchText = '', debounceTimer = null;
+let currentPage = 1, currentTotal = 0;
+const PAGE_SIZE = 200;
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function apiFetch(path) {
+  const r = await fetch(path);
+  return r.json();
+}
+
+async function init() {
+  document.getElementById('spellList').innerHTML = '<div class="loading">加载筛选器...</div>';
+
+  // 防止侧边栏滚轮事件传播到页面
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    sidebar.addEventListener('wheel', function(e) {
+      const scrollTop = sidebar.scrollTop;
+      const scrollHeight = sidebar.scrollHeight;
+      const clientHeight = sidebar.clientHeight;
+      const delta = e.deltaY;
+
+      // 如果在顶部向上滚动或在底部向下滚动，阻止传播
+      if ((delta < 0 && scrollTop <= 0) ||
+          (delta > 0 && scrollTop + clientHeight >= scrollHeight)) {
+        e.stopPropagation();
+      }
+    }, { passive: true });
+  }
+
+  try {
+    const data = await apiFetch('/api/filters');
+    allClasses = data.classes;
+    allSchools = data.schools;
+    renderClassFilters();
+    renderSchoolFilters();
+    renderLevelFilters();
+    applyFilters();
+  } catch (e) {
+    document.getElementById('spellList').innerHTML = '<div class="loading">加载失败：' + e.message + '</div>';
+  }
+}
+
+function renderClassFilters() {
+  document.getElementById('classList').innerHTML = allClasses.map(c =>
+    '<label class="filter-item"><input type="checkbox" data-group="class" value="' + esc(c.class_name) + '" onchange="onCheck(this)"><span>' + esc(c.class_name_cn || c.class_name) + '</span></label>'
+  ).join('');
+}
+
+function renderSchoolFilters() {
+  document.getElementById('schoolList').innerHTML = allSchools.map(s =>
+    '<label class="filter-item"><input type="checkbox" data-group="school" value="' + esc(s) + '" onchange="onCheck(this)"><span>' + esc(s) + '</span></label>'
+  ).join('');
+}
+
+function renderLevelFilters() {
+  let h = '';
+  for (let i = 0; i <= 9; i++) h += '<button class="level-btn" data-level="' + i + '" onclick="toggleLevelBtn(' + i + ')">' + i + '环</button>';
+  document.getElementById('levelFilters').innerHTML = h;
+}
+
+function onCheck(cb) {
+  const set = cb.dataset.group === 'class' ? selectedClasses : selectedSchools;
+  if (cb.checked) set.add(cb.value); else set.delete(cb.value);
+  currentPage = 1;
+  applyFilters();
+}
+
+function toggleLevelBtn(lv) {
+  const btn = document.querySelector('.level-btn[data-level="' + lv + '"]');
+  if (selectedLevels.has(lv)) { selectedLevels.delete(lv); btn.classList.remove('active'); }
+  else { selectedLevels.add(lv); btn.classList.add('active'); }
+  currentPage = 1;
+  applyFilters();
+}
+
+function toggleFilter(group, action) {
+  if (group === 'class') {
+    if (action === 'all') { allClasses.forEach(c => selectedClasses.add(c.class_name)); document.querySelectorAll('#classList input').forEach(cb => cb.checked = true); }
+    else { selectedClasses.clear(); document.querySelectorAll('#classList input').forEach(cb => cb.checked = false); }
+  } else if (group === 'school') {
+    if (action === 'all') { allSchools.forEach(s => selectedSchools.add(s)); document.querySelectorAll('#schoolList input').forEach(cb => cb.checked = true); }
+    else { selectedSchools.clear(); document.querySelectorAll('#schoolList input').forEach(cb => cb.checked = false); }
+  } else if (group === 'level') {
+    if (action === 'all') { for (let i = 0; i <= 9; i++) selectedLevels.add(i); document.querySelectorAll('.level-btn').forEach(b => b.classList.add('active')); }
+    else { selectedLevels.clear(); document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active')); }
+  }
+  currentPage = 1;
+  applyFilters();
+}
+
+document.getElementById('search').addEventListener('input', function () {
+  searchText = this.value.trim();
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => { currentPage = 1; applyFilters(); }, 200);
+});
+
+async function applyFilters() {
+  document.getElementById('spellList').innerHTML = '<div class="loading">查询中...</div>';
+  const params = new URLSearchParams();
+  if (searchText) params.set('search', searchText);
+  if (selectedClasses.size) params.set('classes', [...selectedClasses].join(','));
+  if (selectedSchools.size) params.set('schools', [...selectedSchools].join(','));
+  if (selectedLevels.size) params.set('levels', [...selectedLevels].join(','));
+  params.set('page', currentPage);
+  params.set('pageSize', PAGE_SIZE);
+
+  try {
+    const data = await apiFetch('/api/spells?' + params.toString());
+    currentTotal = data.total;
+    render(data);
+  } catch (e) {
+    document.getElementById('spellList').innerHTML = '<div class="loading">查询失败：' + e.message + '</div>';
+  }
+}
+
+function render(data) {
+  const total = data.total;
+  document.getElementById('stats').innerHTML = '共 <span class="num">' + total + '</span> 条法术';
+
+  if (total === 0) {
+    document.getElementById('spellList').innerHTML = '<div class="empty-state"><div class="icon">&#x1F50D;</div><div>没有找到匹配的法术</div><div style="font-size:.82rem;margin-top:6px;color:var(--text3)">尝试调整筛选条件</div></div>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  const spells = data.spells;
+  const primaryClass = selectedClasses.size > 0 ? [...selectedClasses][0] : null;
+
+  const groups = new Map();
+  for (const spell of spells) {
+    let lv = null;
+    if (primaryClass) {
+      const entry = spell.classes.find(c => c.name === primaryClass);
+      lv = entry ? entry.level : null;
+    }
+    if (lv === null) {
+      const levels = spell.classes.map(c => c.level);
+      lv = levels.length > 0 ? Math.min(...levels) : spell.level;
+    }
+    let g = groups.get(lv);
+    if (!g) { g = []; groups.set(lv, g); }
+    g.push(spell);
+  }
+
+  const sorted = [...groups.keys()].sort((a, b) => a - b);
+  let html = '';
+  for (const lv of sorted) {
+    const g = groups.get(lv);
+    html += '<div class="level-group">';
+    html += '<div class="level-group-header"><h2><span class="lv-num">' + lv + '环</span>';
+    if (primaryClass) html += '<span class="lv-label">' + esc(primaryClass) + '</span>';
+    html += '<span class="lv-count">' + g.length + ' 条</span></h2></div>';
+    html += '<div class="spell-list">';
+    for (const spell of g) html += buildCard(spell);
+    html += '</div></div>';
+  }
+  document.getElementById('spellList').innerHTML = html;
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (totalPages > 1) {
+    let ph = '<button onclick="goPage(' + (currentPage - 1) + ')"' + (currentPage <= 1 ? ' disabled' : '') + '>上一页</button>';
+    ph += '<span class="page-info">' + currentPage + ' / ' + totalPages + '</span>';
+    ph += '<button onclick="goPage(' + (currentPage + 1) + ')"' + (currentPage >= totalPages ? ' disabled' : '') + '>下一页</button>';
+    document.getElementById('pagination').innerHTML = ph;
+  } else {
+    document.getElementById('pagination').innerHTML = '';
+  }
+}
+
+function goPage(p) {
+  currentPage = p;
+  applyFilters();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function buildCard(spell) {
+  const classTags = spell.classes.map(c => {
+    const displayName = c.class_name_cn || CLASS_MAP[c.name] || c.name;
+    return '<span class="tag type">' + esc(displayName) + ' ' + c.level + '</span>';
+  }).join('');
+  const typeTag = spell.types_cn ? '<span class="tag type">' + esc(spell.types_cn) + '</span>' : '';
+  const schoolTag = spell.school_cn ? '<span class="tag school">' + esc(spell.school_cn) + '</span>' : '';
+  const displayName = spell.translated_name || spell.name;
+  const enName = spell.translated_name ? '<span class="en">' + esc(spell.name) + '</span>' : '';
+
+  return '<div class="spell-card" data-id="' + esc(spell.id) + '">' +
+    '<div class="spell-header" onclick="toggleExpand(this)">' +
+    '<div class="spell-top"><div class="spell-name">' + esc(displayName) + enName + '</div></div>' +
+    '<div class="spell-types">' + schoolTag + typeTag + classTags + '</div>' +
+    '</div>' +
+    '<div class="spell-detail"></div></div>';
+}
+
+async function toggleExpand(header) {
+  const card = header.parentElement;
+  const detail = card.querySelector('.spell-detail');
+  if (!card.classList.contains('expanded')) {
+    if (!detail.innerHTML) {
+      const id = card.dataset.id;
+      detail.innerHTML = '<div class="loading" style="padding:12px">加载详情...</div>';
+      try {
+        const spell = await apiFetch('/api/spell?id=' + encodeURIComponent(id));
+        detail.innerHTML = buildDetail(spell);
+      } catch (e) {
+        detail.innerHTML = '<div style="padding:12px;color:red">加载失败</div>';
+      }
+    }
+  }
+  card.classList.toggle('expanded');
+}
+
+function buildDetail(spell) {
+  let h = '';
+  if (spell.actions && spell.actions.length) {
+    for (const act of spell.actions) {
+      h += '<div class="action-block"><div class="action-block-title">' + esc(act.name || '施法') + '</div>';
+      if (act.activation_cn) h += '<div class="action-row"><span class="key">动作</span><span class="val">' + esc(act.activation_cn) + '</span></div>';
+
+      // 在动作和射程之间插入成分信息
+      if (spell.components) h += '<div class="action-row"><span class="key">成分</span><span class="val">' + esc(spell.components) + '</span></div>';
+
+      if (act.range_cn) h += '<div class="action-row"><span class="key">射程</span><span class="val">' + esc(act.range_cn) + '</span></div>';
+      if (act.target) h += '<div class="action-row"><span class="key">目标</span><span class="val">' + esc(act.target) + '</span></div>';
+      if (act.duration) h += '<div class="action-row"><span class="key">持续时间</span><span class="val">' + esc(act.duration) + '</span></div>';
+      if (act.saving_throw) h += '<div class="action-row"><span class="key">豁免</span><span class="val">' + esc(act.saving_throw) + '</span></div>';
+
+      // 法术抗力字段（始终显示是/否）
+      const srText = (spell.spell_resistance || act.sr === 'Yes') ? '是' : '否';
+      h += '<div class="action-row"><span class="key">法术抗力</span><span class="val">' + esc(srText) + '</span></div>';
+
+      if (act.area) h += '<div class="action-row"><span class="key">范围</span><span class="val">' + esc(act.area) + '</span></div>';
+      if (act.effect) h += '<div class="action-row"><span class="key">效果</span><span class="val">' + esc(act.effect) + '</span></div>';
+      h += '</div>';
+    }
+  }
+
+  if (spell.short_description) h += '<div class="desc">' + spell.short_description + '</div>';
+  if (spell.materials) h += '<div class="detail-section"><div class="label">材料</div><div style="font-size:.85rem">' + esc(spell.materials) + '</div></div>';
+  if (spell.focus) h += '<div class="detail-section"><div class="label">专注材料</div><div style="font-size:.85rem">' + esc(spell.focus) + '</div></div>';
+
+  const domains = (spell.domains || []).filter(d => d.type === 'domain');
+  const subDomains = (spell.domains || []).filter(d => d.type === 'subDomain');
+  const bloodlines = (spell.domains || []).filter(d => d.type === 'bloodline');
+
+  if (spell.classes && spell.classes.length) {
+    const classCnTags = spell.classes.map(c => CLASS_MAP[c.name] || c.name).map((cn, i) =>
+      '<span class="class-level-tag">' + esc(cn) + ' ' + spell.classes[i].level + '</span>'
+    ).join('');
+    h += '<div class="detail-section"><div class="label">职业</div><div class="class-levels">' + classCnTags + '</div></div>';
+  }
+
+  if (domains.length) h += '<div class="detail-section"><div class="label">领域</div><div class="class-levels">' + domains.map(d => '<span class="class-level-tag">' + esc(d.name) + ' ' + d.level + '</span>').join('') + '</div></div>';
+  if (subDomains.length) h += '<div class="detail-section"><div class="label">子领域</div><div class="class-levels">' + subDomains.map(d => '<span class="class-level-tag">' + esc(d.name) + ' ' + d.level + '</span>').join('') + '</div></div>';
+  if (bloodlines.length) h += '<div class="detail-section"><div class="label">血脉</div><div class="class-levels">' + bloodlines.map(d => '<span class="class-level-tag">' + esc(d.name) + ' ' + d.level + '</span>').join('') + '</div></div>';
+
+  if (spell.spell_area) h += '<div class="detail-section"><div class="label">范围</div><div style="font-size:.85rem">' + esc(spell.spell_area) + '</div></div>';
+  if (spell.spell_effect) h += '<div class="detail-section"><div class="label">效果</div><div style="font-size:.85rem">' + esc(spell.spell_effect) + '</div></div>';
+
+  // 添加原文按钮和完整的英文施法信息
+  const originalText = spell.original_description || '';
+  const originalUrl = spell.original_url || '';
+
+  h += '<div style="display:flex;align-items:center;gap:6px;margin-top:10px">';
+  h += '<button class="original-text-btn" onclick="toggleOriginalText(this)">📖 英文原文</button>';
+  h += '</div>';
+  h += '<div class="original-text-content">';
+
+  // 英文施法信息区块（使用英文字段）
+  if (spell.actions && spell.actions.length) {
+    h += '<div class="action-block"><div class="action-block-title">Casting</div>';
+
+    for (const act of spell.actions) {
+      if (act.activation_en) h += '<div class="action-row"><span class="key">Action</span><span class="val">' + esc(act.activation_en) + '</span></div>';
+      if (spell.components_en) h += '<div class="action-row"><span class="key">Components</span><span class="val">' + esc(spell.components_en) + '</span></div>';
+      if (act.range_en) h += '<div class="action-row"><span class="key">Range</span><span class="val">' + esc(act.range_en) + '</span></div>';
+      if (act.target_en) h += '<div class="action-row"><span class="key">Target</span><span class="val">' + esc(act.target_en) + '</span></div>';
+      if (act.duration_en) h += '<div class="action-row"><span class="key">Duration</span><span class="val">' + esc(act.duration_en) + '</span></div>';
+      if (act.saving_throw_en) h += '<div class="action-row"><span class="key">Saving Throw</span><span class="val">' + esc(act.saving_throw_en) + '</span></div>';
+
+      // 英文法术抗力
+      const srEnText = (spell.spell_resistance || act.sr === 'Yes') ? 'Yes' : 'No';
+      h += '<div class="action-row"><span class="key">Spell Resistance</span><span class="val">' + esc(srEnText) + '</span></div>';
+
+      if (act.area) h += '<div class="action-row"><span class="key">Area</span><span class="val">' + esc(act.area) + '</span></div>';
+      if (act.effect_en) h += '<div class="action-row"><span class="key">Effect</span><span class="val">' + esc(act.effect_en) + '</span></div>';
+      break; // 只显示第一个action的信息
+    }
+    h += '</div>';
+  }
+
+  // 英文描述文本
+  if (originalText) {
+    h += '<div>' + originalText + '</div>';
+  }
+
+  if (originalUrl) {
+    h += '<a href="' + esc(originalUrl) + '" target="_blank" class="original-text-link">🔗 AONPRD官方原文</a>';
+  }
+  h += '</div>';
+
+  return h;
+}
+
+function toggleOriginalText(btn) {
+  const content = btn.parentElement.nextElementSibling;
+  content.classList.toggle('show');
+  if (content.classList.contains('show')) {
+    btn.textContent = '📕 收起';
+  } else {
+    btn.textContent = '📖 英文原文';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
